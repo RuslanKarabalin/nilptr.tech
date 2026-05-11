@@ -1,26 +1,52 @@
 <script lang="ts">
-	import favicon from "$lib/assets/favicon.svg";
-	import "@picocss/pico/css/pico.min.css";
+	import { resolve } from '$app/paths';
+	import { onMount } from 'svelte';
+
+	type Theme = 'light' | 'dark';
 
 	let { children } = $props();
-</script>
+	let theme = $state<Theme>('light');
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
+	onMount(() => {
+		const current = document.documentElement.getAttribute('data-theme');
+		theme = current === 'dark' ? 'dark' : 'light';
+	});
+
+	let toggleTheme = () => {
+		theme = theme === 'dark' ? 'light' : 'dark';
+		document.documentElement.setAttribute('data-theme', theme);
+		try {
+			localStorage.setItem('theme', theme);
+		} catch {
+			// localStorage may be unavailable
+		}
+	};
+</script>
 
 <div class="page">
 	<header class="site-header">
 		<nav class="container">
 			<ul>
 				<li>
-					<a href="/" class="brand">nilptr.tech</a>
+					<a href={resolve('/')} class="brand">nilptr.tech</a>
 				</li>
 			</ul>
 
 			<ul>
-				<li><a href="/">Home</a></li>
-				<li><a href="/cv">CV</a></li>
+				<li><a href={resolve('/')}>Home</a></li>
+				<li><a href={resolve('/cv')}>CV</a></li>
+				<li>
+					<button
+						type="button"
+						class="theme-toggle"
+						onclick={toggleTheme}
+						aria-label="Toggle theme"
+						aria-pressed={theme === 'dark'}
+						title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+					>
+						{theme === 'dark' ? 'dark' : 'light'}
+					</button>
+				</li>
 			</ul>
 		</nav>
 	</header>
@@ -36,11 +62,7 @@
 			<nav>
 				<ul>
 					<li>
-						<a
-							href="https://github.com/RuslanKarabalin"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
+						<a href="https://github.com/RuslanKarabalin" target="_blank" rel="noopener noreferrer">
 							GitHub
 						</a>
 					</li>
@@ -60,11 +82,6 @@
 		min-height: 100vh;
 		display: flex;
 		flex-direction: column;
-	}
-
-	.container {
-		width: min(100% - 2rem, 48rem);
-		margin-inline: auto;
 	}
 
 	.site-header {
@@ -100,5 +117,15 @@
 	.site-footer nav,
 	.site-footer ul {
 		margin: 0;
+	}
+
+	.theme-toggle {
+		background: transparent;
+		border: none;
+		padding: 0.25rem 0.5rem;
+		font-size: 1.1rem;
+		line-height: 1;
+		cursor: pointer;
+		color: inherit;
 	}
 </style>
