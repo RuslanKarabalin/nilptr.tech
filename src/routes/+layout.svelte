@@ -35,6 +35,8 @@
 			<ul>
 				<li><a href={resolve('/')}>Home</a></li>
 				<li><a href={resolve('/cv')}>CV</a></li>
+			</ul>
+			<ul>
 				<li>
 					<button
 						type="button"
@@ -88,10 +90,6 @@
 		border-bottom: 1px solid var(--pico-muted-border-color);
 	}
 
-	.site-header nav {
-		padding-block: 1rem;
-	}
-
 	.brand {
 		font-weight: 700;
 		text-decoration: none;
@@ -111,21 +109,11 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		padding-block: 1rem;
-	}
-
-	.site-footer nav,
-	.site-footer ul {
-		margin: 0;
 	}
 
 	.theme-toggle {
 		background: transparent;
 		border: none;
-		padding: 0.25rem 0.5rem;
-		font-size: 1.1rem;
-		line-height: 1;
-		cursor: pointer;
 		color: inherit;
 	}
 </style>
