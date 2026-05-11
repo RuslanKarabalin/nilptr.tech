@@ -33,7 +33,6 @@
 			</ul>
 
 			<ul>
-				<li><a href={resolve('/')}>Home</a></li>
 				<li><a href={resolve('/cv')}>CV</a></li>
 			</ul>
 			<ul>
