@@ -6,7 +6,7 @@
 	};
 
 	let dec = () => {
-		++count;
+		--count;
 	};
 </script>
 

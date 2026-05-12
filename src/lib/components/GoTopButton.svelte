@@ -31,7 +31,7 @@
 	.go-top {
 		position: fixed;
 		right: 1rem;
-		bottom: 2rem;
+		bottom: 1rem;
 		z-index: 1;
 
 		width: 3rem;

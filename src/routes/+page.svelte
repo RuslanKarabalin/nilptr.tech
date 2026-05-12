@@ -3,23 +3,34 @@
 </script>
 
 <h1>Hi There</h1>
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
-<Counter />
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
 <Counter />
