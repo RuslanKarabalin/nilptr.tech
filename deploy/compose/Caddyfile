@@ -1,0 +1,15 @@
+# Local reverse proxy, mirrors the production Traefik Ingress:
+#   /api, /files -> backend
+#   everything else -> frontend
+# Upstreams can be overridden to point at natively running processes, see
+# README.md (Local development).
+{
+	admin off
+	auto_https off
+}
+
+:8000 {
+	@backend path /api /api/* /files /files/*
+	reverse_proxy @backend {$BACKEND_UPSTREAM:backend:8080}
+	reverse_proxy {$FRONTEND_UPSTREAM:frontend:3000}
+}

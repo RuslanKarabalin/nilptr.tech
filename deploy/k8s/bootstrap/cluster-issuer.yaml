@@ -1,0 +1,17 @@
+# Let's Encrypt production issuer. Applied once by the cluster owner after
+# cert-manager is installed. Replace the email before applying: Let's
+# Encrypt rejects example.com addresses and sends expiry notices here.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: CHANGE-ME@nilptr.tech
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

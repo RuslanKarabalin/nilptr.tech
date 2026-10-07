@@ -1,0 +1,84 @@
+# Public entry point, served by the Traefik bundled with k3s.
+#   /api, /files -> backend:8080
+#   everything else -> frontend:3000
+# HTTPS only: the plain HTTP Ingress below just redirects to HTTPS.
+# cert-manager issues the certificate into the nilptr-tech-tls Secret via
+# the letsencrypt-prod ClusterIssuer (deploy/k8s/bootstrap/
+# cluster-issuer.yaml). The HTTP-01 solver Ingress created by cert-manager
+# has a longer path, so Traefik prefers it over the redirect.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: nilptr
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nilptr
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - nilptr.tech
+      secretName: nilptr-tech-tls
+  rules:
+    - host: nilptr.tech
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  name: http
+          - path: /files
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nilptr-http-redirect
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: nilptr-redirect-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: nilptr.tech
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  name: http

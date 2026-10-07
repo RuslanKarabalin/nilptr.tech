@@ -1,0 +1,173 @@
+# Local development stack: everything that runs in production, on one
+# machine.
+#
+#   docker compose up --build      # start, open http://localhost:8000
+#   deploy/scripts/smoke.sh        # end-to-end smoke test
+#   docker compose down -v         # stop and delete all data
+#
+# Start order (depends_on):
+#   postgres (healthy) + garage (healthy)
+#   -> garage-init (layout, bucket, key; exits 0)
+#   -> backend-migrate (/app/nilptr migrate; exits 0)
+#   -> backend -> backend-ready (waits for /readyz; exits 0)
+#   -> frontend (healthy) -> proxy on :8000
+#
+# The backend image is distroless (no shell, no curl), so it has no
+# healthcheck of its own. backend-ready, a tiny curl container, polls
+# backend /readyz and exits, and the frontend and proxy wait for it.
+#
+# Ports on localhost: 8000 proxy (use this one), 3000 frontend,
+# 8080 backend, 5432 postgres, 3900 garage S3, 3903 garage admin.
+
+name: nilptr
+
+x-backend-env: &backend-env
+  env_file:
+    - path: deploy/backend.env.example
+    - path: deploy/.env.backend
+      required: false
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: nilptr
+      POSTGRES_PASSWORD: nilptr
+      POSTGRES_DB: nilptr
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nilptr -d nilptr"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  garage:
+    image: dxflrs/garage:v2.4.1
+    environment:
+      GARAGE_RPC_SECRET: "0000000000000000000000000000000000000000000000000000000000000001"
+      GARAGE_ADMIN_TOKEN: dev-admin-token
+      GARAGE_METRICS_TOKEN: dev-metrics-token
+    ports:
+      - "127.0.0.1:3900:3900"
+      - "127.0.0.1:3903:3903"
+    volumes:
+      - ./deploy/compose/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    healthcheck:
+      # The image has no shell; the garage binary itself checks that the
+      # node answers on RPC. /health would stay 503 until garage-init.
+      test: ["CMD", "/garage", "status"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  garage-init:
+    image: curlimages/curl:8.22.0
+    <<: *backend-env
+    environment:
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_ADMIN_TOKEN: dev-admin-token
+      GARAGE_CAPACITY: "10000000000"
+    command: ["sh", "/garage-init.sh"]
+    volumes:
+      - ./deploy/scripts/garage-init.sh:/garage-init.sh:ro
+    depends_on:
+      garage:
+        condition: service_healthy
+    restart: "no"
+
+  backend-migrate:
+    build: ./backend
+    image: nilptr-backend:dev
+    <<: *backend-env
+    entrypoint: ["/app/nilptr"]
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  backend:
+    # Same image as backend-migrate (built once, then cached).
+    build: ./backend
+    image: nilptr-backend:dev
+    <<: *backend-env
+    entrypoint: ["/app/nilptr"]
+    command: ["serve"]
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  backend-ready:
+    image: curlimages/curl:8.22.0
+    command:
+      - sh
+      - -c
+      - |
+        for i in $$(seq 1 60); do
+          if curl -fsS http://backend:8080/readyz; then
+            echo; echo "backend is ready"; exit 0
+          fi
+          sleep 1
+        done
+        echo "backend did not become ready"; exit 1
+    depends_on:
+      backend:
+        condition: service_started
+    restart: "no"
+
+  frontend:
+    build: ./frontend
+    image: nilptr-frontend:dev
+    env_file:
+      - path: deploy/frontend.env.example
+      - path: deploy/.env.frontend
+        required: false
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend-ready:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/healthz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2.11.7-alpine
+    environment:
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:8080}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-frontend:3000}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./deploy/compose/Caddyfile:/etc/caddy/Caddyfile:ro
+    extra_hosts:
+      # Lets the proxy reach natively running processes, see README.md.
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      backend-ready:
+        condition: service_completed_successfully
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  garage-meta:
+  garage-data:

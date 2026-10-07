@@ -1,0 +1,76 @@
+# Non-secret configuration. Secrets live in the backend, postgres, garage
+# and backup-target Secrets (see deploy/k8s/secrets/*.example.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr
+data:
+  HTTP_ADDR: ":8080"
+  S3_ENDPOINT: "garage:3900"
+  S3_BUCKET: "nilptr"
+  S3_REGION: "garage"
+  S3_USE_SSL: "false"
+  # k3s pod network: Traefik and frontend pods live here.
+  TRUSTED_PROXIES: "10.42.0.0/16,127.0.0.1/32"
+  COOKIE_SECURE: "true"
+  MAX_UPLOAD_BYTES: "1073741824"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr
+data:
+  PORT: "3000"
+  ORIGIN: "https://nilptr.tech"
+  BACKEND_URL: "http://backend.nilptr.svc.cluster.local:8080"
+  ADDRESS_HEADER: "X-Forwarded-For"
+  XFF_DEPTH: "1"
+  # Uploads stream through SvelteKit form actions; adapter-node default
+  # is 512K. Slightly above MAX_UPLOAD_BYTES (1 GiB).
+  BODY_SIZE_LIMIT: "1100M"
+---
+# Garage server config. Secrets (rpc_secret, admin_token, metrics_token)
+# come from the garage Secret via GARAGE_* environment variables.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-config
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr
+data:
+  garage.toml: |
+    metadata_dir = "/var/lib/garage/meta"
+    data_dir = "/var/lib/garage/data"
+    db_engine = "lmdb"
+    replication_factor = 1
+
+    rpc_bind_addr = "0.0.0.0:3901"
+    rpc_public_addr = "127.0.0.1:3901"
+
+    [s3_api]
+    s3_region = "garage"
+    api_bind_addr = "0.0.0.0:3900"
+
+    [admin]
+    api_bind_addr = "0.0.0.0:3903"
+---
+# Backup settings, see backup-cronjob.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr
+data:
+  # Path prefix inside the backup bucket.
+  BACKUP_PREFIX: "nilptr"
+  # Database dumps older than this are deleted from the target.
+  BACKUP_RETENTION: "30d"

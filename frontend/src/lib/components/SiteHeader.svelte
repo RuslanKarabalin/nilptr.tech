@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import type { NavLink as Link } from '$lib/types';
+	import NavLink from './NavLink.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
+
+	let { links }: { links: Link[] } = $props();
 </script>
 
 <header class="site-header">
@@ -11,14 +15,11 @@
 			</li>
 		</ul>
 		<ul>
-			<li>
-				<a href={resolve('/cv')}>CV</a>
-			</li>
-			<li>
-				<a href="https://github.com/RuslanKarabalin" target="_blank" rel="noopener noreferrer">
-					GitHub
-				</a>
-			</li>
+			{#each links as link, i (i)}
+				<li>
+					<NavLink {link} />
+				</li>
+			{/each}
 		</ul>
 		<ul>
 			<li>

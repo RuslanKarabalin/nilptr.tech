@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-node';
 
 const config = {
 	compilerOptions: {
@@ -6,9 +6,7 @@ const config = {
 	},
 	kit: {
 		adapter: adapter({
-			fallback: '404.html',
-			precompress: false,
-			strict: true
+			precompress: true
 		})
 	}
 };

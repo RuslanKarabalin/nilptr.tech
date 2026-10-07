@@ -1,0 +1,200 @@
+# Nightly backup to an external S3-compatible storage, because the
+# database and the files live on a single disk.
+#
+#   1. init container: pg_dump in custom format to an emptyDir
+#   2. main container: rclone uploads the dump to
+#        <BACKUP_S3_BUCKET>/<BACKUP_PREFIX>/postgres/nilptr-<UTC time>.dump
+#      copies every object of the Garage bucket to
+#        <BACKUP_S3_BUCKET>/<BACKUP_PREFIX>/files/
+#      (copy, not sync: objects deleted in Garage stay in the backup)
+#      and removes dumps older than BACKUP_RETENTION.
+#
+# Requires the backup-target Secret (deploy/k8s/secrets/
+# backup-target.example.yaml). Run it by hand with:
+#   kubectl -n nilptr create job --from=cronjob/backup backup-manual-1
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/name: backup
+    app.kubernetes.io/part-of: nilptr
+spec:
+  schedule: "30 3 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 10800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: backup
+            app.kubernetes.io/part-of: nilptr
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            - name: pg-dump
+              image: postgres:17
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  mkdir -p /backup/db
+                  file="/backup/db/nilptr-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  pg_dump --format=custom --no-owner --file="$file"
+                  ls -l /backup/db
+              env:
+                - name: PGHOST
+                  value: postgres
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres
+                      key: POSTGRES_PASSWORD
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres
+                      key: POSTGRES_DB
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                - name: tmp
+                  mountPath: /tmp
+          containers:
+            - name: upload
+              image: rclone/rclone:1.75
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  dst="dst:$BACKUP_S3_BUCKET/$BACKUP_PREFIX"
+                  echo "uploading database dump"
+                  rclone copy --stats-one-line -v /backup/db "$dst/postgres"
+                  echo "copying files from garage bucket $S3_BUCKET"
+                  rclone copy --stats-one-line -v "src:$S3_BUCKET" "$dst/files"
+                  echo "removing dumps older than $BACKUP_RETENTION"
+                  rclone delete -v --min-age "$BACKUP_RETENTION" "$dst/postgres"
+                  echo "backup done"
+              envFrom:
+                - configMapRef:
+                    name: backup-config
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: RCLONE_CONFIG
+                  value: /tmp/rclone.conf
+                - name: RCLONE_CACHE_DIR
+                  value: /tmp/rclone-cache
+                - name: S3_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: backend-config
+                      key: S3_BUCKET
+                # Source: in-cluster Garage, path-style, region garage.
+                - name: RCLONE_CONFIG_SRC_TYPE
+                  value: s3
+                - name: RCLONE_CONFIG_SRC_PROVIDER
+                  value: Other
+                - name: RCLONE_CONFIG_SRC_ENDPOINT
+                  value: http://garage:3900
+                - name: RCLONE_CONFIG_SRC_REGION
+                  value: garage
+                - name: RCLONE_CONFIG_SRC_FORCE_PATH_STYLE
+                  value: "true"
+                - name: RCLONE_CONFIG_SRC_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: backend
+                      key: S3_ACCESS_KEY
+                - name: RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: backend
+                      key: S3_SECRET_KEY
+                # Destination: external S3-compatible storage.
+                - name: RCLONE_CONFIG_DST_TYPE
+                  value: s3
+                - name: RCLONE_CONFIG_DST_PROVIDER
+                  value: Other
+                - name: RCLONE_CONFIG_DST_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-target
+                      key: BACKUP_S3_ENDPOINT
+                - name: RCLONE_CONFIG_DST_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-target
+                      key: BACKUP_S3_REGION
+                - name: RCLONE_CONFIG_DST_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-target
+                      key: BACKUP_S3_ACCESS_KEY
+                - name: RCLONE_CONFIG_DST_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-target
+                      key: BACKUP_S3_SECRET_KEY
+                - name: BACKUP_S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: backup-target
+                      key: BACKUP_S3_BUCKET
+                # Do not try to create the target bucket.
+                - name: RCLONE_CONFIG_DST_NO_CHECK_BUCKET
+                  value: "true"
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 512Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: backup
+              emptyDir:
+                sizeLimit: 10Gi
+            - name: tmp
+              emptyDir: {}

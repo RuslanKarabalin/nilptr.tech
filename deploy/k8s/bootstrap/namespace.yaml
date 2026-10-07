@@ -1,0 +1,8 @@
+# Applied once by the cluster owner (CI has no rights on cluster-scoped
+# objects).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nilptr
+  labels:
+    app.kubernetes.io/part-of: nilptr

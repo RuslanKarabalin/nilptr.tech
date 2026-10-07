@@ -1,0 +1,112 @@
+# Runs on every deploy, before the backend Deployment is updated.
+# A Job spec is immutable, so CI deletes the previous backend-migrate Job
+# first and then applies this one (with ${IMAGE_TAG} substituted).
+# No ttlSecondsAfterFinished: CI waits on the Job and reads its logs.
+#
+# Init container garage-init: idempotent Garage bootstrap (layout, bucket,
+# access key), the script comes from the garage-init ConfigMap that CI
+# creates from deploy/scripts/garage-init.sh.
+# Main container: /app/nilptr migrate (embedded SQL migrations).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-migrate
+  namespace: nilptr
+  labels:
+    app.kubernetes.io/name: backend-migrate
+    app.kubernetes.io/part-of: nilptr
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-migrate
+        app.kubernetes.io/part-of: nilptr
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: garage-init
+          image: curlimages/curl:8.22.0
+          command: ["sh", "/scripts/garage-init.sh"]
+          env:
+            - name: GARAGE_ADMIN_URL
+              value: http://garage-headless:3903
+            - name: GARAGE_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: garage
+                  key: GARAGE_ADMIN_TOKEN
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: S3_BUCKET
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend
+                  key: S3_SECRET_KEY
+            - name: TMPDIR
+              value: /tmp
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: migrate
+          image: ghcr.io/ruslankarabalin/nilptr-backend:${IMAGE_TAG}
+          command: ["/app/nilptr"]
+          args: ["migrate"]
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: garage-init
+        - name: tmp
+          emptyDir: {}

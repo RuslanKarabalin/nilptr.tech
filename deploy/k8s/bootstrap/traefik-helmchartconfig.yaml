@@ -1,0 +1,23 @@
+# Customizes the Traefik bundled with k3s. Applied once by the cluster
+# owner: kubectl apply -f deploy/k8s/bootstrap/traefik-helmchartconfig.yaml
+# k3s re-renders the Traefik chart with these values automatically.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        # Keep the real client IP: no SNAT to the node address, so Traefik
+        # sees the client and sets X-Forwarded-For correctly. Needed for the
+        # one comment per IP per day limit.
+        externalTrafficPolicy: Local
+    ports:
+      websecure:
+        transport:
+          respondingTimeouts:
+            # Traefik v3 defaults to 60s for reading the whole request,
+            # which is too short for uploads up to MAX_UPLOAD_BYTES (1 GiB).
+            readTimeout: 30m
