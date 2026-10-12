@@ -14,13 +14,15 @@
 # Environment (defaults match docker-compose.yaml):
 #   BASE_URL      proxy, like production    http://localhost:8000
 #   BACKEND_URL   backend direct            http://localhost:8080
-#   FRONTEND_URL  frontend direct           http://localhost:3000
+#   FRONTEND_URL  frontend health checks    http://localhost:8000
+#                 (the frontend port is not published, the proxy sends
+#                 /healthz and /readyz to the frontend)
 #   ADMIN_LOGIN / ADMIN_PASSWORD            admin / admin
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8000}"
 BACKEND_URL="${BACKEND_URL:-http://localhost:8080}"
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
+FRONTEND_URL="${FRONTEND_URL:-$BASE_URL}"
 ADMIN_LOGIN="${ADMIN_LOGIN:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 

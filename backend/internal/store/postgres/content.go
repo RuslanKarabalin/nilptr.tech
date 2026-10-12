@@ -26,14 +26,15 @@ func collectPosts(rows pgx.Rows) ([]store.Post, error) {
 	return out, mapErr(err)
 }
 
-// PublishedPosts lists published posts, newest first. Bodies are omitted.
+// PublishedPosts lists published posts, newest first. Bodies are included
+// so the feed can show an excerpt and a reading time.
 func (db *DB) PublishedPosts(ctx context.Context, pg store.Page) ([]store.Post, int, error) {
 	var total int
 	if err := db.pool.QueryRow(ctx, `select count(*) from posts where status = 'published'`).Scan(&total); err != nil {
 		return nil, 0, mapErr(err)
 	}
 	rows, err := db.pool.Query(ctx, `
-		select id, slug, title, '', status::text, created_at, updated_at, published_at
+		select `+postColumns+`
 		from posts where status = 'published'
 		order by published_at desc, id
 		limit $1 offset $2`, pg.Limit, pg.Offset)

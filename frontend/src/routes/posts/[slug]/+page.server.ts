@@ -1,5 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { commentPayload, commentResult } from '$lib/comments';
+import { readingMinutes } from '$lib/format';
 import { clientInfo } from '$lib/server/admin';
 import { backendDown, getPost, listComments } from '$lib/server/api';
 import { backendFetch, errorMessage } from '$lib/server/backend';
@@ -27,6 +28,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			updated_at: post.updated_at
 		},
 		html,
+		minutes: readingMinutes(post.body.split(/\s+/).filter(Boolean).length),
 		description: excerpt(post.body),
 		comments
 	};

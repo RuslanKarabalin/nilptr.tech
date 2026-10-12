@@ -60,11 +60,20 @@ The frontend exposes the same two paths (readyz may just return 200).
 ```json
 {
   "items": [
-    {"slug": "hello", "title": "Hello", "published_at": "2026-10-06T10:00:00Z"}
+    {
+      "slug": "hello",
+      "title": "Hello",
+      "published_at": "2026-10-06T10:00:00Z",
+      "lead": "first 1000 characters of the markdown body",
+      "words": 420
+    }
   ],
   "total": 1
 }
 ```
+
+`lead` is the start of the markdown body for the feed excerpt, `words` is
+the number of whitespace separated words for the reading time.
 
 `GET /api/posts/{slug}` - post with status `published` or `unlisted`,
 otherwise 404.

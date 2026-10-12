@@ -8,6 +8,22 @@ export function formatDate(value: string | null | undefined): string {
 	return date.toISOString().slice(0, 10);
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Oct 12, 2026", in UTC. */
+export function formatDateLong(value: string | null | undefined): string {
+	if (!value) return '';
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return '';
+	return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
+
+/** Reading time in whole minutes at 200 words per minute, at least 1. */
+export function readingMinutes(words: number): number {
+	if (!Number.isFinite(words) || words <= 0) return 1;
+	return Math.max(1, Math.round(words / 200));
+}
+
 export function formatDateTime(value: string | null | undefined): string {
 	if (!value) return '';
 	const date = new Date(value);

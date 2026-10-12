@@ -23,6 +23,23 @@ type postSummary struct {
 	Slug        string     `json:"slug"`
 	Title       string     `json:"title"`
 	PublishedAt *time.Time `json:"published_at"`
+	Lead        string     `json:"lead"`
+	Words       int        `json:"words"`
+}
+
+// leadRunes is how much of the markdown body the feed gets for its excerpt.
+const leadRunes = 1000
+
+// lead returns the start of body cut to at most leadRunes runes.
+func lead(body string) string {
+	n := 0
+	for i := range body {
+		if n == leadRunes {
+			return body[:i]
+		}
+		n++
+	}
+	return body
 }
 
 type publicPost struct {
@@ -66,7 +83,10 @@ func (s *Server) listPosts(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]postSummary, 0, len(posts))
 	for _, p := range posts {
-		items = append(items, postSummary{Slug: p.Slug, Title: p.Title, PublishedAt: p.PublishedAt})
+		items = append(items, postSummary{
+			Slug: p.Slug, Title: p.Title, PublishedAt: p.PublishedAt,
+			Lead: lead(p.Body), Words: len(strings.Fields(p.Body)),
+		})
 	}
 	writeJSON(w, http.StatusOK, list(items, total))
 }

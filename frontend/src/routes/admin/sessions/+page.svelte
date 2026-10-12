@@ -37,7 +37,7 @@
 				{#each data.sessions as session (session.id)}
 					<tr class:current={session.current}>
 						<td>
-							{#if session.current}<mark>current</mark>{/if}
+							{#if session.current}<span class="badge badge-published">this device</span>{/if}
 							<small class="ua">{session.user_agent || 'unknown'}</small>
 						</td>
 						<td><small>{session.ip}</small></td>

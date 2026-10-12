@@ -13,6 +13,10 @@ export interface PostSummary {
 	slug: string;
 	title: string;
 	published_at: string;
+	/** Start of the markdown body, for the excerpt. */
+	lead: string;
+	/** Number of words in the body, for the reading time. */
+	words: number;
 }
 
 export interface Post {

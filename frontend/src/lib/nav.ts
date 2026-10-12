@@ -11,3 +11,6 @@ export const FALLBACK_NAV: Nav = {
 
 export const SITE_NAME = 'nilptr.tech';
 export const SITE_DESCRIPTION = 'Personal blog of Ruslan Karabalin.';
+
+/** Headline on the home page; the part after the | is shown in the accent color. */
+export const SITE_TAGLINE = 'Notes on Go, infrastructure | and the things in between';

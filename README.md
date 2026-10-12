@@ -13,7 +13,7 @@ file downloads and an admin panel at `/admin`.
 | --------- | --------------------------------- | ---- | ------------------- |
 | frontend  | SvelteKit SSR, `adapter-node`     | 3000 | Deployment          |
 | backend   | Go REST API, binary `/app/nilptr` | 8080 | Deployment          |
-| database  | PostgreSQL 17                     | 5432 | StatefulSet + PVC   |
+| database  | PostgreSQL 18                     | 5432 | StatefulSet + PVC   |
 | files     | Garage (S3 compatible)            | 3900 | StatefulSet + PVCs  |
 | ingress   | Traefik (bundled with k3s)        | 443  | Ingress, Middleware |
 | TLS       | cert-manager + Let's Encrypt      |      | ClusterIssuer       |
@@ -79,8 +79,7 @@ Ports on localhost:
 
 | Port | Service                                             |
 | ---- | --------------------------------------------------- |
-| 8000 | proxy, use this one, it routes like production      |
-| 3000 | frontend directly                                   |
+| 8000 | proxy, the site, it routes like production          |
 | 8080 | backend directly                                    |
 | 5432 | PostgreSQL (`nilptr` / `nilptr`)                    |
 | 3900 | Garage S3 API                                       |
@@ -88,8 +87,10 @@ Ports on localhost:
 
 In production Traefik sends `/api` and `/files` to the backend. Locally
 the `proxy` service does the same, so the browser sees one origin, just
-like on `nilptr.tech`. The frontend `ORIGIN` is
-`http://localhost:8000`, so form actions only work through the proxy.
+like on `nilptr.tech`. The frontend port is not published: the frontend
+takes its public address from the `X-Forwarded-Host` header set by the
+proxy, so both `http://localhost:8000` and `http://127.0.0.1:8000` work
+for logging in and other form posts.
 
 Configuration comes from `deploy/backend.env.example` and
 `deploy/frontend.env.example` (safe dev values, `COOKIE_SECURE=false`).
@@ -419,6 +420,69 @@ for the target and a remote `garage:` for the cluster Garage
 
 Test a restore from time to time, for example into the local compose
 stack (`localhost:5432` and `localhost:3900`).
+
+## Upgrading PostgreSQL
+
+A new major version (for example 17 to 18) cannot read the data files of
+the previous one, so a major upgrade is a dump and restore. Minor updates
+(18.6 to 18.7) only need the new image tag.
+
+Since PostgreSQL 18 the official image keeps its data in
+`/var/lib/postgresql/<major>/docker`, and the volume is mounted at
+`/var/lib/postgresql`. A new major version therefore starts with an empty
+cluster next to the old files instead of failing, which is why the dump
+has to be taken before the new image is deployed.
+
+In the cluster:
+
+1. Before merging the upgrade, stop writers and take a dump with the old
+   version:
+
+   ```sh
+   kubectl -n nilptr scale deployment/backend deployment/frontend --replicas=0
+   kubectl -n nilptr patch cronjob backup -p '{"spec":{"suspend":true}}'
+   kubectl -n nilptr exec postgres-0 -- sh -c \
+     'pg_dump --format=custom -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+     > nilptr-before-upgrade.dump
+   ```
+
+2. Merge and let CI deploy. PostgreSQL starts with an empty cluster and
+   the migration Job creates the schema.
+
+3. Restore the dump into the new version and start again:
+
+   ```sh
+   kubectl -n nilptr scale deployment/backend deployment/frontend --replicas=0
+   kubectl -n nilptr exec -i postgres-0 -- sh -c \
+     'pg_restore --clean --if-exists --no-owner \
+        -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < nilptr-before-upgrade.dump
+   kubectl -n nilptr scale deployment/backend deployment/frontend --replicas=1
+   kubectl -n nilptr patch cronjob backup -p '{"spec":{"suspend":false}}'
+   ```
+
+4. When everything works, delete the old data files from the volume. For
+   the upgrade from 17 they are in `/var/lib/postgresql/pgdata`:
+
+   ```sh
+   kubectl -n nilptr exec postgres-0 -- rm -rf /var/lib/postgresql/pgdata
+   ```
+
+Locally, the compose volume name contains the major version
+(`postgres18-data`), so an upgrade starts from a fresh volume. To keep the
+old local data, dump it with the old image and restore it into the new
+stack (shown for 17 to 18, where the old volume is `nilptr_postgres-data`):
+
+```sh
+docker run -d --name pg-old -e POSTGRES_PASSWORD=nilptr \
+  -v nilptr_postgres-data:/var/lib/postgresql/data postgres:17
+sleep 5
+docker exec pg-old pg_dump --format=custom -U nilptr -d nilptr > old.dump
+docker rm -f pg-old
+docker compose up -d --wait
+docker compose exec -T postgres \
+  pg_restore --clean --if-exists --no-owner -U nilptr -d nilptr < old.dump
+docker volume rm nilptr_postgres-data
+```
 
 ## Security notes
 

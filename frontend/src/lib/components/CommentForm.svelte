@@ -49,16 +49,18 @@
 </script>
 
 <form method="POST" action="?/comment" onsubmit={submit}>
-	<label>
-		Name (optional)
-		<input
-			name="author"
-			type="text"
-			maxlength={AUTHOR_MAX}
-			autocomplete="nickname"
-			bind:value={author}
-		/>
-	</label>
+	<div class="row">
+		<label>
+			Name (optional)
+			<input
+				name="author"
+				type="text"
+				maxlength={AUTHOR_MAX}
+				autocomplete="nickname"
+				bind:value={author}
+			/>
+		</label>
+	</div>
 	<label>
 		Comment
 		<textarea name="body" rows="5" maxlength={BODY_MAX} required bind:value={body}></textarea>
@@ -70,10 +72,12 @@
 		</label>
 	</div>
 	{#if shown}
-		<p class={shown.ok ? 'ok' : 'error'} role="status">{shown.message}</p>
+		<p class="message {shown.ok ? 'ok' : 'error'}" role="status">{shown.message}</p>
 	{/if}
-	<button type="submit" aria-busy={sending} disabled={sending}>Send</button>
-	<small>Comments are moderated. One comment per day.</small>
+	<div class="actions">
+		<button type="submit" aria-busy={sending} disabled={sending}>Send comment</button>
+		<small>Comments are moderated. One comment per day.</small>
+	</div>
 </form>
 
 <style>
@@ -85,16 +89,43 @@
 		overflow: hidden;
 	}
 
+	.row {
+		max-width: 20rem;
+	}
+
+	textarea {
+		resize: vertical;
+	}
+
+	.message {
+		padding: 0.6rem 0.9rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.9375rem;
+	}
+
 	.ok {
-		color: var(--pico-ins-color);
+		background: var(--success-soft);
+		color: var(--success);
 	}
 
 	.error {
-		color: var(--pico-del-color);
+		background: var(--danger-soft);
+		color: var(--danger);
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem 1rem;
+	}
+
+	.actions button {
+		width: auto;
+		margin: 0;
 	}
 
 	small {
-		display: block;
-		color: var(--pico-muted-color);
+		color: var(--muted);
 	}
 </style>

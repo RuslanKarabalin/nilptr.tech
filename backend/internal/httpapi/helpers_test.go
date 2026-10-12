@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/RuslanKarabalin/nilptr.tech/backend/internal/config"
 )
@@ -197,5 +199,19 @@ func TestParseStatsRange(t *testing.T) {
 	}
 	if _, _, msg = parseStatsRange("bad", "", now); msg == "" {
 		t.Fatal("bad date accepted")
+	}
+}
+
+func TestLead(t *testing.T) {
+	if got := lead("short"); got != "short" {
+		t.Fatalf("lead(short) = %q", got)
+	}
+	long := strings.Repeat("я", leadRunes+10)
+	got := lead(long)
+	if n := utf8.RuneCountInString(got); n != leadRunes {
+		t.Fatalf("lead kept %d runes, want %d", n, leadRunes)
+	}
+	if !utf8.ValidString(got) {
+		t.Fatal("lead cut a rune in half")
 	}
 }

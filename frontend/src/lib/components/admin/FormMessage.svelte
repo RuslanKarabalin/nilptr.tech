@@ -10,16 +10,31 @@
 
 <style>
 	.message {
-		padding: 0.5rem 0.75rem;
-		border-radius: var(--pico-border-radius);
-		border: 1px solid currentColor;
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.7rem 1rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.9375rem;
+		font-weight: 500;
+	}
+
+	.message::before {
+		content: '';
+		width: 0.5rem;
+		height: 0.5rem;
+		flex: none;
+		border-radius: 50%;
+		background: currentColor;
 	}
 
 	.error {
-		color: var(--pico-del-color);
+		background: var(--danger-soft);
+		color: var(--danger);
 	}
 
 	.success {
-		color: var(--pico-ins-color);
+		background: var(--success-soft);
+		color: var(--success);
 	}
 </style>

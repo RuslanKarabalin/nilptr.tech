@@ -4,6 +4,7 @@
 import type { Element, ElementContent } from 'hast';
 import type { Nodes, Paragraph, Parent, PhrasingContent, Root, RootContent } from 'mdast';
 import type { ContainerDirective, LeafDirective, TextDirective } from 'mdast-util-directive';
+import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
@@ -276,6 +277,9 @@ export async function renderMarkdown(
 		.use(remarkRehype)
 		.use(rehypeKatex, { throwOnError: false, strict: false })
 		.use(rehypeSanitize, sanitizeSchema)
+		// After the sanitizer: it only wraps the already clean code text in
+		// spans with hljs-* classes. Blocks without a language stay plain.
+		.use(rehypeHighlight, { detect: false })
 		.use(rehypeStringify)
 		.process(source);
 	return String(file);

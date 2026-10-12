@@ -1,5 +1,8 @@
 <script lang="ts">
+	import '@fontsource-variable/inter';
+	import '@fontsource-variable/jetbrains-mono';
 	import '@picocss/pico/css/pico.min.css';
+	import '$lib/styles/theme.css';
 	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import GoTopButton from '$lib/components/GoTopButton.svelte';
@@ -36,7 +39,7 @@
 	<div class="page">
 		<SiteHeader links={data.nav.header} />
 
-		<main class="container">
+		<main>
 			{@render children()}
 		</main>
 
@@ -47,11 +50,6 @@
 <GoTopButton />
 
 <style>
-	:global(html, body) {
-		margin: 0;
-		padding: 0;
-	}
-
 	.page {
 		min-height: 100dvh;
 		display: flex;
@@ -60,6 +58,6 @@
 
 	main {
 		flex: 1;
-		padding-block: 2rem;
+		padding-block: 2.5rem 0;
 	}
 </style>

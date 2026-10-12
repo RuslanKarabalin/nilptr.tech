@@ -50,6 +50,24 @@ describe('renderMarkdown', () => {
 		expect(html).not.toContain('javascript:');
 	});
 
+	it('highlights fenced code with a language', async () => {
+		const html = await renderMarkdown('```go\nfunc main() {}\n```', noFiles);
+		expect(html).toContain('<code class="hljs language-go">');
+		expect(html).toContain('<span class="hljs-keyword">func</span>');
+	});
+
+	it('leaves code without a language plain', async () => {
+		const html = await renderMarkdown('```\nfunc main() {}\n```', noFiles);
+		expect(html).toContain('<pre><code>func main() {}');
+		expect(html).not.toContain('hljs');
+	});
+
+	it('keeps markup inside highlighted code escaped', async () => {
+		const html = await renderMarkdown('```html\n<script>alert(1)</script>\n```', noFiles);
+		expect(html).not.toContain('<script>');
+		expect(html).toContain('&#x3C;');
+	});
+
 	it('renders ::image', async () => {
 		const html = await renderMarkdown(`::image{id=${ID} alt="A cat"}`, noFiles);
 		expect(html).toBe(`<img src="/files/${ID}" alt="A cat" loading="lazy">`);

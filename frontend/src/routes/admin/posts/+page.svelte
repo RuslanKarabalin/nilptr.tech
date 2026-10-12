@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import Icon from '$lib/components/Icon.svelte';
 	import FormMessage from '$lib/components/admin/FormMessage.svelte';
 	import Pager from '$lib/components/admin/Pager.svelte';
 	import { formatDateTime } from '$lib/format';
@@ -15,7 +16,7 @@
 
 <div class="heading">
 	<h1>Posts</h1>
-	<a href={resolve('/admin/posts/new')} role="button">New post</a>
+	<a href={resolve('/admin/posts/new')} role="button"><Icon name="plus" /> New post</a>
 </div>
 
 <form method="GET" class="filter">
@@ -61,9 +62,9 @@
 								<a href={resolve('/posts/[slug]', { slug: post.slug })}><code>{post.slug}</code></a>
 							{/if}
 						</td>
-						<td>{post.status}</td>
-						<td>{formatDateTime(post.updated_at)}</td>
-						<td>{formatDateTime(post.published_at)}</td>
+						<td><span class="badge badge-{post.status}">{post.status}</span></td>
+						<td class="muted">{formatDateTime(post.updated_at)}</td>
+						<td class="muted">{formatDateTime(post.published_at)}</td>
 						<td>
 							<form
 								method="POST"
@@ -87,13 +88,6 @@
 <Pager page={data.page} pages={data.pages} />
 
 <style>
-	.heading {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: 1rem;
-	}
-
 	.filter {
 		max-width: 16rem;
 	}
@@ -104,7 +98,18 @@
 
 	.small {
 		margin: 0;
-		padding: 0.125rem 0.5rem;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8125rem;
+	}
+
+	.small:hover {
+		border-color: var(--danger);
+		color: var(--danger);
+	}
+
+	.muted {
+		color: var(--muted);
 		font-size: 0.875rem;
+		white-space: nowrap;
 	}
 </style>

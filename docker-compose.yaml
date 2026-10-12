@@ -16,8 +16,9 @@
 # healthcheck of its own. backend-ready, a tiny curl container, polls
 # backend /readyz and exits, and the frontend and proxy wait for it.
 #
-# Ports on localhost: 8000 proxy (use this one), 3000 frontend,
-# 8080 backend, 5432 postgres, 3900 garage S3, 3903 garage admin.
+# Ports on localhost: 8000 proxy (the site), 8080 backend, 5432 postgres,
+# 3900 garage S3, 3903 garage admin. The frontend is reachable only
+# through the proxy: it trusts the X-Forwarded-Host header from it.
 
 name: nilptr
 
@@ -29,7 +30,7 @@ x-backend-env: &backend-env
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18.6-trixie
     environment:
       POSTGRES_USER: nilptr
       POSTGRES_PASSWORD: nilptr
@@ -37,7 +38,10 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # PostgreSQL 18 keeps data in /var/lib/postgresql/18/docker. The
+      # volume name carries the major version, so an upgrade starts from a
+      # fresh volume instead of tripping over old data (see README.md).
+      - postgres18-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nilptr -d nilptr"]
       interval: 2s
@@ -132,8 +136,6 @@ services:
       - path: deploy/frontend.env.example
       - path: deploy/.env.frontend
         required: false
-    ports:
-      - "127.0.0.1:3000:3000"
     depends_on:
       backend-ready:
         condition: service_completed_successfully
@@ -168,6 +170,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres-data:
+  postgres18-data:
   garage-meta:
   garage-data:

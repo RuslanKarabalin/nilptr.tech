@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import Icon from '$lib/components/Icon.svelte';
 	import FormMessage from '$lib/components/admin/FormMessage.svelte';
 	import Pager from '$lib/components/admin/Pager.svelte';
 	import { directiveFor, formatDateTime, formatSize } from '$lib/format';
@@ -40,7 +41,12 @@
 		};
 	}}
 >
-	<div role="group">
+	<div class="dropzone">
+		<span class="dropzone-icon"><Icon name="upload" size="1.4rem" /></span>
+		<div class="dropzone-text">
+			<strong>Upload a file</strong>
+			<span>Images, video or any other file. It gets a permanent link.</span>
+		</div>
 		<input type="file" name="file" required aria-label="File" />
 		<button type="submit" aria-busy={uploading} disabled={uploading}>Upload</button>
 	</div>
@@ -49,13 +55,13 @@
 <FormMessage error={form?.error} success={form && 'success' in form ? form.success : null} />
 
 {#if form && 'uploaded' in form && form.uploaded}
-	<p>
+	<p class="insert">
 		Insert into a post: <code>{directiveFor(form.uploaded)}</code>
 	</p>
 {/if}
 
 {#if data.files.length === 0}
-	<p>No files yet.</p>
+	<p class="empty">No files yet.</p>
 {:else}
 	<div class="overflow-auto">
 		<table>
@@ -110,14 +116,94 @@
 		margin: 0;
 	}
 
+	/* The directive and its Copy button may wrap onto two lines. */
+	td.snippet {
+		white-space: normal;
+	}
+
+	.snippet {
+		min-width: 14rem;
+	}
+
 	.snippet code {
-		white-space: nowrap;
+		display: inline-block;
+		margin-bottom: 0.35rem;
+		overflow-wrap: anywhere;
 		font-size: 0.75rem;
 	}
 
 	.small {
 		margin: 0;
-		padding: 0.125rem 0.5rem;
-		font-size: 0.875rem;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8125rem;
+	}
+
+	.small:hover {
+		border-color: var(--danger);
+		color: var(--danger);
+	}
+
+	.dropzone {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: center;
+		gap: 1rem 1.1rem;
+		margin-bottom: 1.5rem;
+		padding: 1.25rem;
+		border: 1.5px dashed var(--border-strong);
+		border-radius: var(--radius);
+		background: var(--surface);
+	}
+
+	.dropzone-icon {
+		display: grid;
+		place-items: center;
+		width: 3rem;
+		height: 3rem;
+		border-radius: var(--radius-sm);
+		background: var(--accent-soft);
+		color: var(--accent);
+	}
+
+	.dropzone-text {
+		display: grid;
+		gap: 0.1rem;
+	}
+
+	.dropzone-text strong {
+		color: var(--heading);
+	}
+
+	.dropzone-text span,
+	.empty {
+		color: var(--muted);
+		font-size: 0.9375rem;
+	}
+
+	.dropzone input {
+		grid-column: 1 / -1;
+		margin: 0;
+	}
+
+	.dropzone button {
+		grid-column: 1 / -1;
+		margin: 0;
+	}
+
+	@media (min-width: 900px) {
+		.dropzone {
+			grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) auto;
+		}
+
+		.dropzone input,
+		.dropzone button {
+			grid-column: auto;
+		}
+	}
+
+	.insert {
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius-sm);
+		background: var(--accent-soft);
 	}
 </style>

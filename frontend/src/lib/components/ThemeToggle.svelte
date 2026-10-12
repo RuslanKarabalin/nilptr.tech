@@ -1,42 +1,43 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import Icon from './Icon.svelte';
 
-	type Theme = 'light' | 'dark';
-
-	let theme = $state<Theme>('light');
-
-	onMount(() => {
-		const current = document.documentElement.getAttribute('data-theme');
-		theme = current === 'dark' ? 'dark' : 'light';
-	});
-
-	let toggleTheme = () => {
-		theme = theme === 'dark' ? 'light' : 'dark';
-		document.documentElement.setAttribute('data-theme', theme);
-
+	// The current theme lives on <html data-theme>, set by app.html before the
+	// first paint. The icon is chosen in CSS, so SSR and hydration always match.
+	function toggleTheme() {
+		const root = document.documentElement;
+		const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+		root.setAttribute('data-theme', next);
 		try {
-			localStorage.setItem('theme', theme);
+			localStorage.setItem('theme', next);
 		} catch {
 			// localStorage may be unavailable
 		}
-	};
+	}
 </script>
 
 <button
 	type="button"
-	class="theme-toggle"
+	class="icon-button theme-toggle"
 	onclick={toggleTheme}
-	aria-label="Toggle theme"
-	aria-pressed={theme === 'dark'}
-	title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+	aria-label="Toggle dark theme"
+	title="Toggle theme"
 >
-	{theme === 'dark' ? 'dark' : 'light'}
+	<span class="sun"><Icon name="sun" /></span>
+	<span class="moon"><Icon name="moon" /></span>
 </button>
 
 <style>
-	.theme-toggle {
-		background: transparent;
-		border: none;
-		color: inherit;
+	.theme-toggle span {
+		display: grid;
+		place-items: center;
+	}
+
+	.moon,
+	:global([data-theme='dark']) .sun {
+		display: none !important;
+	}
+
+	:global([data-theme='dark']) .moon {
+		display: grid !important;
 	}
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import Icon from '$lib/components/Icon.svelte';
 	import FormMessage from '$lib/components/admin/FormMessage.svelte';
 	import Pager from '$lib/components/admin/Pager.svelte';
 	import { formatDateTime } from '$lib/format';
@@ -14,7 +15,7 @@
 
 <div class="heading">
 	<h1>Pages</h1>
-	<a href={resolve('/admin/pages/new')} role="button">New page</a>
+	<a href={resolve('/admin/pages/new')} role="button"><Icon name="plus" /> New page</a>
 </div>
 
 <p>
@@ -42,7 +43,7 @@
 							><a href={resolve('/[slug=slug]', { slug: item.slug })}><code>/{item.slug}</code></a
 							></td
 						>
-						<td>{formatDateTime(item.updated_at)}</td>
+						<td class="muted">{formatDateTime(item.updated_at)}</td>
 						<td>
 							<form
 								method="POST"
@@ -66,20 +67,24 @@
 <Pager page={data.page} pages={data.pageCount} />
 
 <style>
-	.heading {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: 1rem;
-	}
-
 	td form {
 		margin: 0;
 	}
 
 	.small {
 		margin: 0;
-		padding: 0.125rem 0.5rem;
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8125rem;
+	}
+
+	.small:hover {
+		border-color: var(--danger);
+		color: var(--danger);
+	}
+
+	.muted {
+		color: var(--muted);
 		font-size: 0.875rem;
+		white-space: nowrap;
 	}
 </style>

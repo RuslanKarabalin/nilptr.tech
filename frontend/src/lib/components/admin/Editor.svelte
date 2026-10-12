@@ -41,6 +41,8 @@
 	let previewHtml = $state('');
 	let previewError = $state('');
 	let previewing = $state(false);
+	// Source of the html currently shown, so the same text is not rendered twice.
+	let previewSource: string | null = null;
 
 	function slugify(text: string): string {
 		return text
@@ -57,6 +59,7 @@
 	$effect(() => {
 		if (!showPreview) return;
 		const source = body;
+		if (source === previewSource) return;
 		const controller = new AbortController();
 		const timer = setTimeout(async () => {
 			previewing = true;
@@ -73,6 +76,7 @@
 					return;
 				}
 				previewHtml = (await res.json()).html;
+				previewSource = source;
 				previewError = '';
 			} catch (err) {
 				if ((err as Error).name !== 'AbortError') previewError = 'Preview failed.';
@@ -98,8 +102,8 @@
 		};
 	}}
 >
-	<div class="grid">
-		<label>
+	<div class="fields card">
+		<label class="title-field">
 			Title
 			<input
 				name="title"
@@ -135,57 +139,155 @@
 		{/if}
 	</div>
 
-	<label class="preview-toggle">
-		<input type="checkbox" role="switch" bind:checked={showPreview} />
-		Live preview
-	</label>
-
 	<div class={showPreview ? 'panes split' : 'panes'}>
-		<label>
-			Body (markdown)
+		<label class="pane">
+			<span class="pane-title">Markdown</span>
 			<textarea name="body" rows="24" spellcheck="true" bind:value={body}></textarea>
 		</label>
 		{#if showPreview}
-			<section class="preview" aria-label="Preview" aria-busy={previewing}>
-				{#if previewError}
-					<p><small>{previewError}</small></p>
-				{/if}
-				<Markdown html={previewHtml} />
+			<!-- No aria-busy here: Pico turns it into a spinner plus white-space: nowrap
+			     on the whole block, which makes the preview jump on every update. -->
+			<section class="pane" aria-label="Preview">
+				<span class="pane-title">
+					Preview
+					<span class="pane-status" class:visible={previewing} role="status">
+						{previewing ? 'updating' : ''}
+					</span>
+				</span>
+				<div class="preview">
+					{#if previewError}
+						<p class="preview-error">{previewError}</p>
+					{/if}
+					<Markdown html={previewHtml} />
+				</div>
 			</section>
 		{/if}
 	</div>
 
-	<button type="submit" aria-busy={saving} disabled={saving}>{submitLabel}</button>
+	<div class="savebar">
+		<label class="preview-toggle">
+			<input type="checkbox" role="switch" bind:checked={showPreview} />
+			Live preview
+		</label>
+		<button type="submit" aria-busy={saving} disabled={saving}>{submitLabel}</button>
+	</div>
 </form>
 
 <style>
-	.panes {
+	.fields {
 		display: grid;
-		gap: 1rem;
+		grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr);
+		gap: 0 1rem;
+		margin-bottom: 1.25rem;
+		padding: 1.25rem 1.25rem 0.25rem;
+		border-radius: var(--radius);
 	}
 
-	@media (min-width: 1024px) {
-		.split {
-			grid-template-columns: 1fr 1fr;
+	.fields:has(select) {
+		grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr);
+	}
+
+	@media (max-width: 720px) {
+		.fields,
+		.fields:has(select) {
+			grid-template-columns: minmax(0, 1fr);
 		}
 	}
 
+	.panes {
+		display: grid;
+		gap: 1.25rem;
+	}
+
+	@media (min-width: 1100px) {
+		.split {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		}
+	}
+
+	.pane {
+		display: flex;
+		flex-direction: column;
+		margin: 0;
+		min-width: 0;
+	}
+
+	.pane-title {
+		margin-bottom: 0.4rem;
+		color: var(--muted);
+		font-size: 0.75rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
 	textarea {
-		font-family: var(--pico-font-family-monospace);
+		flex: 1;
+		min-height: 65vh;
+		margin: 0;
+		padding: 1rem 1.1rem;
+		border-radius: var(--radius);
+		font-family: var(--font-mono);
 		font-size: 0.875rem;
-		min-height: 24rem;
+		line-height: 1.7;
+		resize: vertical;
+	}
+
+	.pane-status {
+		margin-left: 0.5rem;
+		color: var(--accent);
+		font-weight: 500;
+		letter-spacing: 0;
+		text-transform: none;
+		opacity: 0;
+		transition: opacity 0.2s var(--ease);
+	}
+
+	.pane-status.visible {
+		opacity: 1;
 	}
 
 	.preview {
-		border: 1px solid var(--pico-muted-border-color);
-		border-radius: var(--pico-border-radius);
-		padding: 1rem;
-		margin-bottom: var(--pico-spacing);
+		flex: 1;
+		min-height: 65vh;
 		max-height: 80vh;
+		padding: 1.25rem 1.5rem;
+		box-sizing: border-box;
 		overflow: auto;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--surface);
+	}
+
+	.preview-error {
+		color: var(--danger);
+		font-size: 0.875rem;
+	}
+
+	.savebar {
+		position: sticky;
+		bottom: 0;
+		z-index: 5;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 1.25rem;
+		padding: 0.85rem 0;
+		border-top: 1px solid var(--border);
+		background: var(--bg);
+		box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.25);
 	}
 
 	.preview-toggle {
-		margin-bottom: 1rem;
+		margin: 0;
+		color: var(--muted);
+		font-size: 0.9375rem;
+	}
+
+	.savebar button {
+		width: auto;
+		min-width: 8rem;
+		margin: 0;
 	}
 </style>

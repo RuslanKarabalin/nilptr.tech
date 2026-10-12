@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import { enhance } from '$app/forms';
 	import FormMessage from '$lib/components/admin/FormMessage.svelte';
 	import type { NavLink } from '$lib/types';
@@ -83,7 +84,7 @@
 		<section>
 			<h2>{location === 'header' ? 'Header' : 'Footer'}</h2>
 			{#each items as item, i (item.key)}
-				<div class="row" role="group">
+				<div class="row">
 					<input
 						name="{location}_label"
 						type="text"
@@ -102,35 +103,40 @@
 						value={item.url}
 						oninput={(e) => edit(location, i, 'url', e.currentTarget.value)}
 					/>
-					<button
-						type="button"
-						class="secondary outline"
-						title="Move up"
-						aria-label="Move up"
-						disabled={i === 0}
-						onclick={() => move(location, i, -1)}>Up</button
-					>
-					<button
-						type="button"
-						class="secondary outline"
-						title="Move down"
-						aria-label="Move down"
-						disabled={i === items.length - 1}
-						onclick={() => move(location, i, 1)}>Down</button
-					>
-					<button type="button" class="secondary" onclick={() => remove(location, i)}>Remove</button
-					>
+					<div class="row-actions">
+						<button
+							type="button"
+							class="icon-button"
+							title="Move up"
+							aria-label="Move up"
+							disabled={i === 0}
+							onclick={() => move(location, i, -1)}
+						>
+							<Icon name="arrow-up" />
+						</button>
+						<button
+							type="button"
+							class="icon-button down"
+							title="Move down"
+							aria-label="Move down"
+							disabled={i === items.length - 1}
+							onclick={() => move(location, i, 1)}
+						>
+							<Icon name="arrow-up" />
+						</button>
+						<button type="button" class="remove" onclick={() => remove(location, i)}>Remove</button>
+					</div>
 				</div>
 			{/each}
 			<noscript>
-				<div class="row" role="group">
+				<div class="row">
 					<input name="{location}_label" type="text" placeholder="New label" aria-label="Label" />
 					<input name="{location}_url" type="text" placeholder="New URL" aria-label="URL" />
 				</div>
 			</noscript>
-			<button type="button" class="outline" onclick={() => add(location)}
-				>Add {location} link</button
-			>
+			<button type="button" class="outline add" onclick={() => add(location)}>
+				<Icon name="plus" /> Add {location} link
+			</button>
 		</section>
 	{/each}
 
@@ -143,7 +149,71 @@
 		margin-bottom: 2rem;
 	}
 
-	.row button {
-		flex: 0 0 auto;
+	.row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+		padding: 0.5rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--surface);
+	}
+
+	.row input {
+		margin: 0;
+	}
+
+	.row-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.15rem;
+	}
+
+	.row-actions button {
+		margin: 0;
+	}
+
+	.icon-button:disabled {
+		opacity: 0.35;
+		cursor: default;
+	}
+
+	.down :global(svg) {
+		transform: rotate(180deg);
+	}
+
+	.remove {
+		width: auto;
+		padding: 0.4rem 0.8rem;
+		border: 1px solid transparent;
+		background: transparent;
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+
+	.remove:hover {
+		border-color: var(--danger);
+		background: var(--danger-soft);
+		color: var(--danger);
+	}
+
+	.add {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		width: auto;
+		margin-top: 0.25rem;
+	}
+
+	@media (max-width: 640px) {
+		.row {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.row-actions {
+			justify-content: flex-end;
+		}
 	}
 </style>

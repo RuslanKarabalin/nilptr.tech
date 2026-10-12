@@ -31,8 +31,9 @@
 </div>
 <p>
 	<small>
-		Created {formatDateTime(data.post.created_at)}, updated {formatDateTime(data.post.updated_at)}
-		{#if data.post.published_at}, published {formatDateTime(data.post.published_at)}{/if}
+		Created {formatDateTime(data.post.created_at)}, updated {formatDateTime(
+			data.post.updated_at
+		)}{#if data.post.published_at}, published {formatDateTime(data.post.published_at)}{/if}
 	</small>
 </p>
 
